@@ -4,7 +4,7 @@ import { CircleMarker, MapContainer, Popup, TileLayer, useMapEvents } from "reac
 import "leaflet/dist/leaflet.css";
 import "./App.css";
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "https://foodai-backend-89fz.onrender.com";
 
 function getDistanceKm(latitude1, longitude1, latitude2, longitude2) {
   const lat1 = Number(latitude1);
