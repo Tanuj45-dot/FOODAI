@@ -195,94 +195,73 @@ def register_user(
 def register_restaurant_partner(
     username: str,
     password: str,
-    restaurant_id: int
+    name: str,
+    cuisine: str,
+    location: str = ""
 ):
-
     db = SessionLocal()
-
     try:
-
         username = username.strip().lower()
+        name = name.strip()
+        cuisine = cuisine.strip()
+        location = location.strip()
 
-        if not username:
+        if not username or not name or not cuisine:
             raise HTTPException(
                 status_code=400,
-                detail="Username is required."
+                detail="Username, restaurant name, and cuisine are required."
             )
 
-        if not password:
+        if not password or len(password) < 6:
             raise HTTPException(
                 status_code=400,
-                detail="Password is required."
+                detail="Password must be at least 6 characters."
             )
 
-        existing_user = (
-            db.query(models.User)
-            .filter(
-                models.User.username == username
-            )
-            .first()
+        if db.query(models.User).filter(models.User.username == username).first():
+            raise HTTPException(status_code=400, detail="Username already exists.")
+
+        restaurant = models.Restaurant(
+            name=name,
+            cuisine=cuisine,
+            location=location or None,
+            rating=0,
+            average_price=0,
+            popularity=0,
+            max_discount_amount=50,
+            max_discount_percent=20,
+            ai_offers_enabled=True
         )
-
-        if existing_user:
-            raise HTTPException(
-                status_code=400,
-                detail="Username already exists."
-            )
-
-        restaurant = (
-            db.query(models.Restaurant)
-            .filter(
-                models.Restaurant.id == restaurant_id
-            )
-            .first()
-        )
-
-        if restaurant is None:
-            raise HTTPException(
-                status_code=404,
-                detail="Restaurant not found."
-            )
-
-        existing_restaurant_user = (
-            db.query(models.User)
-            .filter(
-                models.User.restaurant_id == restaurant_id,
-                models.User.role == "restaurant"
-            )
-            .first()
-        )
-
-        if existing_restaurant_user:
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    "This restaurant already has "
-                    "a partner account."
-                )
-            )
+        db.add(restaurant)
+        db.flush()
 
         user = models.User(
             username=username,
             password_hash=hash_password(password),
             role="restaurant",
-            restaurant_id=restaurant_id
+            restaurant_id=restaurant.id
         )
-
         db.add(user)
         db.commit()
         db.refresh(user)
 
         return {
-            "message": "Restaurant partner registered successfully.",
+            "message": "Restaurant registered successfully.",
             "user_id": user.id,
             "username": user.username,
             "role": user.role,
-            "restaurant_id": user.restaurant_id
+            "restaurant_id": restaurant.id
         }
-
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=500,
+            detail="Unable to create restaurant account."
+        )
     finally:
-
         db.close()
 
 
